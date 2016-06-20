@@ -54,20 +54,22 @@ chrome.runtime.onInstalled.addListener(setAuthToken);
 chrome.tabs.onUpdated.addListener(refreshContextMenus);
 
 let fetchApi = (url, param) => {
+	let baseUrl = 'https://www.googleapis.com/calendar/v3/users/me/calendarList';
+	param = param || {
+		'headers': {}
+	};
 	return new Promise((resolve, reject) => {
 		chrome.storage.local.get('token', (value) => {
-			fetch(url, Object.assign({
-				headers: {
-					'Authorization': 'Bearer ' + value.token
-				}
-			}, param)).then(resolve, reject);
+			Object.assign(param.headers, {
+				'Authorization': 'Bearer ' + value.token
+			});
+			fetch(baseUrl + url, param).then(resolve, reject);
 		});
 	});
 };
 
 let fetchSelectedCalendar = () => {
-	return fetchApi('https://www.googleapis.com/calendar/v3/users/me/calendarList?maxResults=250&fields=items(id%2Cselected)')
-	.then((res) => res.json());
+	return fetchApi('?maxResults=250&fields=items(id%2Cselected)').then((res) => res.json());
 }
 
 function createGroup (clickData) {
@@ -92,20 +94,33 @@ function createGroup (clickData) {
 
 function selectGroup (menuItemId) {
 	let ids = menuItemId.replace(/^CalendarGroup:/, '').split(/:/);
-	let param = {
-		method: 'PUT',
-		headers: {
-			'Accept': 'application/json',
-			'Content-Type': 'application/json'
-		},
-		body: JSON.stringify({
-			'selected': true
-		})
-	};
-	let getUrl = (id) => `https://www.googleapis.com/calendar/v3/users/me/calendarList/${id}?fields=selected`;
-	let promises = ids.map(encodeURIComponent).map((id) => fetch(fetchApi(id), param));
-	Promise.all(promises).then(() => {
-		chrome.tabs.reload();
+	fetchSelectedCalendar().then((json) => {
+		let param = {
+			method: 'PUT',
+			headers: {
+				'Accept': 'application/json',
+				'Content-Type': 'application/json'
+			},
+			body: JSON.stringify({
+				'selected': true
+			})
+		};
+		let unselectPromises = json.items
+			.filter((item) => !ids.includes(item.id) && item.selected)
+			.map((item) => new Promise((resolve) => {
+				resolve
+				let id = encodeURIComponent(item.id);
+				fetchApi(`/${id}?fields=selected`, param)
+			}))
+		;
+		let selectPromises = ids
+			.filter((id) => json.items.find((item) => item.id === id && !item.selected))
+			.map(encodeURIComponent)
+			.map((id) => fetchApi(`/${id}?fields=selected`, param))
+		;
+		Promise.all(selectPromises.concat(unselectPromises)).then(() => {
+			chrome.tabs.reload();
+		});
 	});
 }
 
