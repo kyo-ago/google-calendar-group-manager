@@ -69,7 +69,7 @@ let fetchApi = (url, param) => {
 };
 
 let fetchSelectedCalendar = () => {
-	return fetchApi('?maxResults=250&fields=items(id%2Cselected)').then((res) => res.json());
+	return fetchApi('?maxResults=250&fields=items(backgroundColor%2CcolorId%2Cdeleted%2CforegroundColor%2Cid%2Cselected)').then((res) => res.json());
 }
 
 function createGroup (clickData) {
@@ -92,31 +92,41 @@ function createGroup (clickData) {
 	});
 }
 
+function getBodyParam (selected, item) {
+	delete item['id'];
+	return {
+		body: JSON.stringify(Object.assign(item, {
+			'selected': selected
+		}))
+	};
+}
+
 function selectGroup (menuItemId) {
 	let ids = menuItemId.replace(/^CalendarGroup:/, '').split(/:/);
 	fetchSelectedCalendar().then((json) => {
+		let items = json.items.filter((item) => !item.deleted);
 		let param = {
 			method: 'PUT',
 			headers: {
 				'Accept': 'application/json',
 				'Content-Type': 'application/json'
-			},
-			body: JSON.stringify({
-				'selected': true
-			})
+			}
 		};
-		let unselectPromises = json.items
+		let unselectPromises = items
 			.filter((item) => !ids.includes(item.id) && item.selected)
-			.map((item) => new Promise((resolve) => {
-				resolve
+			.map((item) => {
 				let id = encodeURIComponent(item.id);
-				fetchApi(`/${id}?fields=selected`, param)
-			}))
+				let p = Object.assign(param, getBodyParam(false, item));
+				return fetchApi(`/${id}`, p);
+			})
 		;
-		let selectPromises = ids
-			.filter((id) => json.items.find((item) => item.id === id && !item.selected))
-			.map(encodeURIComponent)
-			.map((id) => fetchApi(`/${id}?fields=selected`, param))
+		let selectPromises = items
+			.filter((item) => ids.includes(item.id) && !item.selected)
+			.map((item) => {
+				let id = encodeURIComponent(item.id);
+				let p = Object.assign(param, getBodyParam(true, item));
+				return fetchApi(`/${id}`, p);
+			})
 		;
 		Promise.all(selectPromises.concat(unselectPromises)).then(() => {
 			chrome.tabs.reload();
