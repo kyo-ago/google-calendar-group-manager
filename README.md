@@ -1,15 +1,13 @@
-contextmenu-source
+Google Calendar group manager
 =======
-
-add JS, CSS link to context menu
 
 Install
 -------
-[contextmenu-source](https://chrome.google.com/webstore/detail/contextmenu-source/fhhcikpajojeibhmagbfkhjlddflbnam)
+[Google Calendar group manager - Chrome ウェブストア](https://chrome.google.com/webstore/detail/google-calendar-group-man/bbmbojfohlkneepldfngpknmodlefnim?hl=ja&authuser=1)
 
 License
 -------
 
-@license contextmenu-source
-(c) 2013 Copyright (C) 2013 @kyo_ago https://github.com/kyo-ago/contextmenu-source
+@license Google Calendar group manager
+(c) 2016 Copyright (C) 2016 @kyo_ago https://github.com/kyo-ago/google-calendar-group-manager
 License: MIT

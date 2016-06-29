@@ -15,7 +15,6 @@ let timeout;
 function refreshContextMenus(tabId) {
 	clearInterval(timeout);
 	timeout = setTimeout(() => {
-		setAuthToken();
 		chrome.tabs.get(tabId, (tab) => {
 			if (!tab) {
 				return;
@@ -26,6 +25,7 @@ function refreshContextMenus(tabId) {
 			if (!tab.url.match(/^https:\/\/calendar\.google\.com\//)) {
 				return;
 			}
+			setAuthToken();
 			chrome.contextMenus.removeAll(() => {
 				createContextMenus({
 					id: 'CalendarGroupTop',
@@ -43,6 +43,10 @@ function refreshContextMenus(tabId) {
 					createContextMenus({
 						id: 'CalendarGroupCreate',
 						title: 'add current group'
+					});
+					createContextMenus({
+						id: 'ClearCalendarGroup',
+						title: 'clear all group'
 					});
 				});
 			});
@@ -105,6 +109,17 @@ function selectGroup (menuItemId) {
 	let ids = menuItemId.replace(/^CalendarGroup:/, '').split(/:/);
 	fetchSelectedCalendar().then((json) => {
 		let items = json.items.filter((item) => !item.deleted);
+		let changeCalendarState = (state) => {
+			return items
+				.filter((item) => state === ids.includes(item.id))
+				.filter((item) => state !== item.selected)
+				.map((item) => {
+					let id = encodeURIComponent(item.id);
+					let p = Object.assign(param, getBodyParam(state, item));
+					return fetchApi(`/${id}`, p);
+				})
+			;
+		}
 		let param = {
 			method: 'PUT',
 			headers: {
@@ -112,22 +127,8 @@ function selectGroup (menuItemId) {
 				'Content-Type': 'application/json'
 			}
 		};
-		let unselectPromises = items
-			.filter((item) => !ids.includes(item.id) && item.selected)
-			.map((item) => {
-				let id = encodeURIComponent(item.id);
-				let p = Object.assign(param, getBodyParam(false, item));
-				return fetchApi(`/${id}`, p);
-			})
-		;
-		let selectPromises = items
-			.filter((item) => ids.includes(item.id) && !item.selected)
-			.map((item) => {
-				let id = encodeURIComponent(item.id);
-				let p = Object.assign(param, getBodyParam(true, item));
-				return fetchApi(`/${id}`, p);
-			})
-		;
+		let unselectPromises = changeCalendarState(false);
+		let selectPromises = changeCalendarState(true);
 		Promise.all(selectPromises.concat(unselectPromises)).then(() => {
 			chrome.tabs.reload();
 		});
@@ -137,6 +138,14 @@ function selectGroup (menuItemId) {
 chrome.contextMenus.onClicked.addListener((clickData) => {
 	if (clickData.menuItemId === 'CalendarGroupCreate') {
 		createGroup(clickData.menuItemId);
+		return;
+	}
+	if (clickData.menuItemId === 'ClearCalendarGroup') {
+		chrome.storage.local.clear(() => {
+			chrome.contextMenus.removeAll(() => {
+				chrome.tabs.reload();
+			});
+		});
 		return;
 	}
 	if (clickData.menuItemId.match(/^CalendarGroup:/)) {
