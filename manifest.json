@@ -1,6 +1,6 @@
 {
 	"name": "Google Calendar group manager",
-	"version": "0.0.1",
+	"version": "0.0.3",
 	"manifest_version": 2,
 	"oauth2": {
 		"client_id": "390060771847-feqdi3ago40i2bhahjkn4illgeg0a168.apps.googleusercontent.com",
