@@ -11,3 +11,8 @@ License
 @license Google Calendar group manager
 (c) 2016 Copyright (C) 2016 @kyo_ago https://github.com/kyo-ago/google-calendar-group-manager
 License: MIT
+
+Link
+-------
+
+https://console.developers.google.com/apis/credentials
